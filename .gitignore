@@ -16,3 +16,7 @@ CMakeLists.txt.user*
 *~
 
 tools/docs
+MavSdk/MavSdk.xcodeproj/project.pbxproj
+MavSdk/MavSdk.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+MavSdk/MavSdk.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+MavSdk/MavSdk.xcodeproj/project.xcworkspace/xcuserdata/guyb.xcuserdatad/UserInterfaceState.xcuserstate

@@ -1,0 +1,73 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 50;
+	objects = {
+
+/* Begin PBXFileReference section */
+		6428138624F3749E0039D513 /* MAVSDK */ = {isa = PBXFileReference; lastKnownFileType = folder; name = MAVSDK; path = ..; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		6428137F24F374810039D513 = {
+			isa = PBXGroup;
+			children = (
+				6428138624F3749E0039D513 /* MAVSDK */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXProject section */
+		6428138024F374810039D513 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 1160;
+			};
+			buildConfigurationList = 6428138324F374810039D513 /* Build configuration list for PBXProject "MavSdk" */;
+			compatibilityVersion = "Xcode 9.3";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 6428137F24F374810039D513;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+			);
+		};
+/* End PBXProject section */
+
+/* Begin XCBuildConfiguration section */
+		6428138424F374810039D513 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		6428138524F374810039D513 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		6428138324F374810039D513 /* Build configuration list for PBXProject "MavSdk" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6428138424F374810039D513 /* Debug */,
+				6428138524F374810039D513 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 6428138024F374810039D513 /* Project object */;
+}
