@@ -14,6 +14,7 @@ find_package(MAVSDK REQUIRED)
 
 add_executable(swarm_mission
     swarm_mission.cpp
+    utils.cpp
 )
 
 target_link_libraries(swarm_mission

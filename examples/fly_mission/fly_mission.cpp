@@ -38,15 +38,171 @@ inline void handle_mission_err_exit(Mission::Result result, const std::string& m
 // Handles Connection result
 inline void handle_connection_err_exit(ConnectionResult result, const std::string& message);
 
-static Mission::MissionItem make_mission_item(
-    double latitude_deg,
-    double longitude_deg,
-    float relative_altitude_m,
-    float speed_m_s,
-    bool is_fly_through,
-    float gimbal_pitch_deg,
-    float gimbal_yaw_deg,
-    Mission::MissionItem::CameraAction camera_action);
+// Mission::MissionItem lacks a constructor - extend class
+struct MissionItemEx : public Mission::MissionItem{
+    
+public:
+    MissionItemEx( double latitude_deg,
+                   double longitude_deg,
+                   float relative_altitude_m,
+                   float speed_m_s,
+                   bool is_fly_through,
+                   float gimbal_pitch_deg,
+                   float gimbal_yaw_deg,
+                   Mission::MissionItem::CameraAction camera_action)
+    {
+        this->latitude_deg        = latitude_deg;
+        this->longitude_deg       = longitude_deg;
+        this->relative_altitude_m = relative_altitude_m;
+        this->speed_m_s           = speed_m_s;
+        this->is_fly_through      = is_fly_through;
+        this->gimbal_pitch_deg    = gimbal_pitch_deg;
+        this->gimbal_yaw_deg      = gimbal_yaw_deg;
+        this->camera_action       = camera_action;
+    }
+};
+
+// Wrapper on mavsdk::Mission
+class MissionEx : public Mission{
+    
+private:
+    Mission::MissionPlan mp;
+    
+public:
+    MissionEx(System &s):Mission(s){}
+        
+    bool result( const Mission::Result result, const char *title)
+    {
+        if (result != Mission::Result::Success) {
+            std::cout << "Mission " << title << " failed (" << result << ")" << std::endl;
+            return false;
+        }
+        std::cout << "Mission " << title << "ed" << std::endl;
+        return true;
+    }
+    
+    bool setup( std::vector<MissionItemEx> &mi )
+    {
+        bool ok = true;
+        mp.mission_items.clear();
+        for (auto it = begin (mi); it != end (mi); ++it) {
+            this->mp.mission_items.push_back( static_cast<Mission::MissionItem>(*it) );
+        }
+        return ok;
+    }
+    
+    bool clear (const char *title = "clear"){
+        std::cout << "Mission " << title << std::endl;
+        return this->result( this->clear_mission() , title );
+    }
+    
+    bool upload(const char *title = "upload"){
+        std::cout << "Mission " << title << " (" << this->mp.mission_items.size() << ")" << std::endl;
+        auto prom = std::make_shared<std::promise<Mission::Result>>();
+        auto future_result = prom->get_future();
+        this->upload_mission_async( this->mp, [prom](Mission::Result result) { prom->set_value(result); });
+        return this->result( future_result.get() , title  );
+    }
+    
+    bool pause (const char *title = "pause"){
+        std::cout << "Mission " << title << std::endl;
+        auto prom = std::make_shared<std::promise<Mission::Result>>();
+        auto future_result = prom->get_future();
+        this->pause_mission_async( [prom](Mission::Result result) { prom->set_value(result); });
+        return this->result( future_result.get() , title );
+    }
+        
+    bool start (const char *title = "start"){
+        std::cout << "Mission " << title << std::endl;
+        auto prom = std::make_shared<std::promise<Mission::Result>>();
+        auto future_result = prom->get_future();
+        this->start_mission_async( [prom](Mission::Result result){ prom->set_value(result); });
+        return this->result( future_result.get() , title );
+    }
+    
+    bool resume(const char *title = "resume" ){
+        return this->start(title);
+    }
+    
+    bool stop  (){
+        this->pause("stop");
+        return this->clear();
+    }
+};
+
+bool clear_mission ( std::shared_ptr<MissionEx> mission );
+bool upload_mission( std::shared_ptr<MissionEx> mission , const std::vector<MissionItemEx> &mi );
+
+std::vector<MissionItemEx> g_mi =
+{
+    {47.398170327054473,
+        8.5456490218639658,
+        10.0f,
+        5.0f,
+        false,
+        20.0f,
+        60.0f,
+        Mission::MissionItem::CameraAction::None
+    },
+    { 47.398241338125118,8.5455360114574432,
+        10.0f,
+        2.0f,
+        true,
+        0.0f,
+        -60.0f,
+        Mission::MissionItem::CameraAction::TakePhoto
+    },
+    {
+        47.398139363821485,
+        8.5453846156597137,
+        10.0f,
+        5.0f,
+        true,
+        -45.0f,
+        0.0f,
+        Mission::MissionItem::CameraAction::StartVideo
+    },
+    {
+        47.398058617228855,
+        8.5454618036746979,
+        10.0f,
+        2.0f,
+        false,
+        -90.0f,
+        30.0f,
+        Mission::MissionItem::CameraAction::StopVideo
+    },
+    {
+        47.398100366082858,
+        8.5456969141960144,
+        10.0f,
+        5.0f,
+        false,
+        -45.0f,
+        -30.0f,
+        Mission::MissionItem::CameraAction::StartPhotoInterval
+    },
+    {
+        47.398001890458097,
+        8.5455576181411743,
+        10.0f,
+        5.0f,
+        false,
+        0.0f,
+        0.0f,
+        Mission::MissionItem::CameraAction::StopPhotoInterval
+    },
+    {
+        47.398170327054473,
+        8.5456490218639658,
+        10.0f,
+        5.0f,
+        false,
+        20.0f,
+        60.0f,
+        Mission::MissionItem::CameraAction::None
+    }
+};
 
 void usage(std::string bin_name)
 {
@@ -103,7 +259,7 @@ int main(int argc, char** argv)
     // dc.system(uint64_t uuid);
     System& system = dc.system();
     auto action = std::make_shared<Action>(system);
-    auto mission = std::make_shared<Mission>(system);
+    auto mission = std::make_shared<MissionEx>(system);
     auto telemetry = std::make_shared<Telemetry>(system);
 
     while (!telemetry->health_all_ok()) {
@@ -112,89 +268,11 @@ int main(int argc, char** argv)
     }
 
     std::cout << "System ready" << std::endl;
-    std::cout << "Creating and uploading mission" << std::endl;
-
-    std::vector<Mission::MissionItem> mission_items;
-
-    mission_items.push_back(make_mission_item(
-        47.398170327054473,
-        8.5456490218639658,
-        10.0f,
-        5.0f,
-        false,
-        20.0f,
-        60.0f,
-        Mission::MissionItem::CameraAction::None));
-
-    mission_items.push_back(make_mission_item(
-        47.398241338125118,
-        8.5455360114574432,
-        10.0f,
-        2.0f,
-        true,
-        0.0f,
-        -60.0f,
-        Mission::MissionItem::CameraAction::TakePhoto));
-
-    mission_items.push_back(make_mission_item(
-        47.398139363821485,
-        8.5453846156597137,
-        10.0f,
-        5.0f,
-        true,
-        -45.0f,
-        0.0f,
-        Mission::MissionItem::CameraAction::StartVideo));
-
-    mission_items.push_back(make_mission_item(
-        47.398058617228855,
-        8.5454618036746979,
-        10.0f,
-        2.0f,
-        false,
-        -90.0f,
-        30.0f,
-        Mission::MissionItem::CameraAction::StopVideo));
-
-    mission_items.push_back(make_mission_item(
-        47.398100366082858,
-        8.5456969141960144,
-        10.0f,
-        5.0f,
-        false,
-        -45.0f,
-        -30.0f,
-        Mission::MissionItem::CameraAction::StartPhotoInterval));
-
-    mission_items.push_back(make_mission_item(
-        47.398001890458097,
-        8.5455576181411743,
-        10.0f,
-        5.0f,
-        false,
-        0.0f,
-        0.0f,
-        Mission::MissionItem::CameraAction::StopPhotoInterval));
-
-    {
-        std::cout << "Uploading mission..." << std::endl;
-        // We only have the upload_mission function asynchronous for now, so we wrap it using
-        // std::future.
-        auto prom = std::make_shared<std::promise<Mission::Result>>();
-        auto future_result = prom->get_future();
-        Mission::MissionPlan mission_plan{};
-        mission_plan.mission_items = mission_items;
-        mission->upload_mission_async(
-            mission_plan, [prom](Mission::Result result) { prom->set_value(result); });
-
-        const Mission::Result result = future_result.get();
-        if (result != Mission::Result::Success) {
-            std::cout << "Mission upload failed (" << result << "), exiting." << std::endl;
-            return 1;
-        }
-        std::cout << "Mission uploaded." << std::endl;
-    }
-
+    
+    mission->clear();
+    mission->setup( g_mi );
+    mission->upload();
+    
     std::cout << "Arming..." << std::endl;
     const Action::Result arm_result = action->arm();
     handle_action_err_exit(arm_result, "Arm failed: ");
@@ -214,61 +292,26 @@ int main(int argc, char** argv)
             }
         });
 
-    {
-        std::cout << "Starting mission." << std::endl;
-        auto prom = std::make_shared<std::promise<Mission::Result>>();
-        auto future_result = prom->get_future();
-        mission->start_mission_async([prom](Mission::Result result) {
-            prom->set_value(result);
-            std::cout << "Started mission." << std::endl;
-        });
-
-        const Mission::Result result = future_result.get();
-        handle_mission_err_exit(result, "Mission start failed: ");
-    }
+    mission->start();
 
     while (!want_to_pause) {
         sleep_for(seconds(1));
     }
 
-    {
-        auto prom = std::make_shared<std::promise<Mission::Result>>();
-        auto future_result = prom->get_future();
-
-        std::cout << "Pausing mission..." << std::endl;
-        mission->pause_mission_async([prom](Mission::Result result) { prom->set_value(result); });
-
-        const Mission::Result result = future_result.get();
-        if (result != Mission::Result::Success) {
-            std::cout << "Failed to pause mission (" << result << ")" << std::endl;
-        } else {
-            std::cout << "Mission paused." << std::endl;
-        }
-    }
+    mission->pause();
 
     // Pause for 5 seconds.
     sleep_for(seconds(5));
 
     // Then continue.
-    {
-        auto prom = std::make_shared<std::promise<Mission::Result>>();
-        auto future_result = prom->get_future();
-
-        std::cout << "Resuming mission..." << std::endl;
-        mission->start_mission_async([prom](Mission::Result result) { prom->set_value(result); });
-
-        const Mission::Result result = future_result.get();
-        if (result != Mission::Result::Success) {
-            std::cout << "Failed to resume mission (" << result << ")" << std::endl;
-        } else {
-            std::cout << "Resumed mission." << std::endl;
-        }
-    }
+    mission->resume();
 
     while (!mission->is_mission_finished().second) {
         sleep_for(seconds(1));
     }
 
+    mission->clear();
+    
     {
         // We are done, and can do RTL to go home.
         std::cout << "Commanding RTL..." << std::endl;
@@ -290,26 +333,35 @@ int main(int argc, char** argv)
     std::cout << "Disarmed, exiting." << std::endl;
 }
 
-Mission::MissionItem make_mission_item(
-    double latitude_deg,
-    double longitude_deg,
-    float relative_altitude_m,
-    float speed_m_s,
-    bool is_fly_through,
-    float gimbal_pitch_deg,
-    float gimbal_yaw_deg,
-    Mission::MissionItem::CameraAction camera_action)
+bool upload_mission( std::shared_ptr<MissionEx> mission, const std::vector<MissionItemEx> &mi )
 {
-    Mission::MissionItem new_item{};
-    new_item.latitude_deg = latitude_deg;
-    new_item.longitude_deg = longitude_deg;
-    new_item.relative_altitude_m = relative_altitude_m;
-    new_item.speed_m_s = speed_m_s;
-    new_item.is_fly_through = is_fly_through;
-    new_item.gimbal_pitch_deg = gimbal_pitch_deg;
-    new_item.gimbal_yaw_deg = gimbal_yaw_deg;
-    new_item.camera_action = camera_action;
-    return new_item;
+    bool ok = true;
+
+    std::cout << "Uploading mission... (" << mi.size() << ")" << std::endl;
+    // We only have the upload_mission function asynchronous for now, so we wrap it using
+    // std::future.
+    auto prom = std::make_shared<std::promise<Mission::Result>>();
+    auto future_result = prom->get_future();
+    Mission::MissionPlan mission_plan{};
+    
+    mission_plan.mission_items.clear();
+    
+    // c++ can't cast vector of extended classes to base class
+    for (auto it = begin (mi); it != end (mi); ++it) {
+        mission_plan.mission_items.push_back( static_cast<Mission::MissionItem>(*it) );
+    }
+    
+    mission->upload_mission_async(
+        mission_plan, [prom](Mission::Result result) { prom->set_value(result); }
+        );
+
+    const Mission::Result result = future_result.get();
+    if (result != Mission::Result::Success) {
+        std::cout << "Mission upload failed (" << result << "), exiting." << std::endl;
+        return !ok;
+    }
+    std::cout << "Mission uploaded." << std::endl;
+    return ok;
 }
 
 inline void handle_action_err_exit(Action::Result result, const std::string& message)
