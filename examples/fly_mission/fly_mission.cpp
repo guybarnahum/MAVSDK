@@ -157,11 +157,31 @@ int main(int argc, char** argv)
     auto mission = std::make_shared<MissionEx>(system);
     auto telemetry = std::make_shared<Telemetry>(system);
 
-    while (!telemetry->health_all_ok()) { // @todo timeout from intinite loop
-        std::cout << "Waiting for system to be ready" << std::endl;
-        sleep_for(seconds(1));
+    
+    bool ok = false;
+    int cc = 3;
+    
+    while(cc-- > 0){
+        int timeout = 60;
+        
+        while (!(ok = telemetry->health_all_ok()) && timeout-- ) { // @todo timeout from intinite loop
+            std::cout << "Waiting for system to be ready" << std::endl;
+            sleep_for(seconds(1));
+        }
+        
+        if (ok) break;
+        else{
+            std::cout << "Disarming ... (" << cc << ")" << std::endl;
+            action->disarm();
+        }
     }
-
+    
+    if (!ok){
+        std::cout << "System not ready!" << std::endl;
+        std::cout << "Exiting." << std::endl;
+        exit(0);
+    }
+    
     std::cout << "System ready" << std::endl;
     
     mission->clear();
