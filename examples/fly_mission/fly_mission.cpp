@@ -211,9 +211,21 @@ int main(int argc, char** argv)
     
     for(int ix=0; ix < 25; ix++ ){
         
-        MissionItemEx mi_ex( (double)random<int>(-60.0, +60.0),
-                             (double)random<int>(-60.0, +60.0),
-                             30.0f + (double)random<int>(-10.0, +10.0),
+        double l = (double)random<int>(-50.0, +50.0);
+        l += (l>0)? 10.0f : -10.0f;
+        
+        double n = 0.0f,e = 0.0f;
+        
+        switch ( ix % 4 ){
+            case 0: n = l; e =  l; break;
+            case 1: n = l; e =  0; break;
+            case 2: n = 0; e =  l; break;
+            case 3: n = l; e = -l; break;
+        
+        }
+        
+        MissionItemEx mi_ex( n, e,
+                             40.0f + (double)random<int>(-10.0, +10.0),
                              10.0f, true,0.0f, 0.0f,
                              Mission::MissionItem::CameraAction::None );
         
