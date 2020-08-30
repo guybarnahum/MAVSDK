@@ -109,6 +109,25 @@ void usage(std::string bin_name)
               << "For example, to connect to the simulator use URL: udp://:14540" << std::endl;
 }
 
+#include <random>
+
+template<typename Numeric, typename Generator = std::mt19937>
+Numeric random(Numeric from, Numeric to)
+{
+    thread_local static Generator gen(std::random_device{}());
+
+    using dist_type = typename std::conditional
+    <
+        std::is_integral<Numeric>::value
+        , std::uniform_int_distribution<Numeric>
+        , std::uniform_real_distribution<Numeric>
+    >::type;
+
+    thread_local static dist_type dist;
+
+    return dist(gen, typename dist_type::param_type{from, to});
+}
+
 int main(int argc, char** argv)
 {
     Mavsdk dc;
@@ -165,7 +184,7 @@ int main(int argc, char** argv)
         int timeout = 60;
         
         while (!(ok = telemetry->health_all_ok()) && timeout-- ) { // @todo timeout from intinite loop
-            std::cout << "Waiting for system to be ready" << std::endl;
+            std::cout << "Waiting for system to be ready (" << cc << "." << timeout << ")" << std::endl;
             sleep_for(seconds(1));
         }
         
@@ -187,7 +206,21 @@ int main(int argc, char** argv)
     mission->clear();
     
     mission->setup( telemetry );
-    mission->setup( g_mi );
+    
+    std::vector<MissionItemEx> mi;
+    
+    for(int ix=0; ix < 25; ix++ ){
+        
+        MissionItemEx mi_ex( (double)random<int>(-60.0, +60.0),
+                             (double)random<int>(-60.0, +60.0),
+                             30.0f + (double)random<int>(-10.0, +10.0),
+                             10.0f, true,0.0f, 0.0f,
+                             Mission::MissionItem::CameraAction::None );
+        
+        mi.push_back( mi_ex );
+    }
+    
+    mission->setup( mi );
     mission->upload();
     
     std::cout << "Arming..." << std::endl;
