@@ -209,22 +209,12 @@ int main(int argc, char** argv)
     
     std::vector<MissionItemEx> mi;
     
-    for(int ix=0; ix < 25; ix++ ){
+    for(int ix=0; ix < 24; ix++ ){
         
         double a = 50.0f; // (double)random<int>(30.0, 50.0);
-        double n = 0.0f;
-        double e = 0.0f;
-        
-        switch ( ix % 8 ){
-            case 0: n = a; e =  a; break;
-            case 1: n = a; e =  0; break;
-            case 2: n = a; e = -a; break;
-            case 3: n = 0; e = -a; break;
-            case 4: n =-a; e = -a; break;
-            case 5: n =-a; e =  0; break;
-            case 6: n =-a; e =  a; break;
-            case 7: n = 0; e =  a; break;
-        }
+        double alpha = (ix % 12) * 360.0; 
+        double n = a * sin( alpha );
+        double e = a * cos( alpha );
         
         MissionItemEx mi_ex( n, e,
                              40.0f, // + (double)random<int>(-10.0, +10.0),
